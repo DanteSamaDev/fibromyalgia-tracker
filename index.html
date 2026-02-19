@@ -109,7 +109,7 @@
                 };
                 const newHistory = [entry, ...history];
                 setHistory(newHistory);
-                localStorage.setItem('fibflow_data', JSON.stringify(newHistory));
+                localStorage.setItem('fibroflow_data', JSON.stringify(newHistory));
                 setShowSuccess(true);
                 setTimeout(() => { setShowSuccess(false); setView('home'); resetForm(); }, 1500);
             };
