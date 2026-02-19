@@ -1,1 +1,301 @@
-<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>FibroFlow</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"></head><body class="bg-slate-50"><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FibroFlow</title>
+    <!-- Configurações para transformar em App (PWA) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FibroFlow">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/508/508786.png">
+    
+    <!-- Scripts Necessários -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        input[type="range"] { height: 8px; border-radius: 5px; background: #e2e8f0; outline: none; -webkit-appearance: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #4f46e5; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { 
+            Heart, History, PlusCircle, AlertTriangle, ChevronRight, ChevronLeft, 
+            CheckCircle2, Moon, BookOpen, Users, ShieldCheck, MessageCircle, 
+            Stethoscope, Cloud, Thermometer, Sun, Clock, FileText, Leaf
+        } = lucide;
+
+        // Componente de Ícone (Wrapper para Lucide)
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const LucideIcon = lucide[name];
+            return LucideIcon ? <i data-lucide={name.toLowerCase()} className={className} style={{width: size, height: size}}></i> : null;
+        };
+
+        // --- Componente do Boneco (Mapa de Dor) ---
+        const BodyMap = ({ selectedPoints, onPointToggle }) => {
+            const points = [
+                { id: 'Cabeça', x: '50%', y: '10%' },
+                { id: 'Pescoço', x: '50%', y: '16%' },
+                { id: 'Ombro E', x: '35%', y: '20%' },
+                { id: 'Ombro D', x: '65%', y: '20%' },
+                { id: 'Costas Superior', x: '50%', y: '30%' },
+                { id: 'Lombar', x: '50%', y: '45%' },
+                { id: 'Braço E', x: '25%', y: '35%' },
+                { id: 'Braço D', x: '75%', y: '35%' },
+                { id: 'Quadril', x: '50%', y: '55%' },
+                { id: 'Perna E', x: '40%', y: '75%' },
+                { id: 'Perna D', x: '60%', y: '75%' },
+            ];
+
+            return (
+                <div className="relative w-full h-80 bg-slate-100 rounded-[32px] flex justify-center items-center overflow-hidden mb-4 border border-slate-200">
+                    <div className="relative h-full w-48">
+                        <svg viewBox="0 0 100 200" className="absolute inset-0 w-full h-full text-slate-300 fill-current opacity-40">
+                            <path d="M50,10 C55,10 60,15 60,25 C60,35 55,40 50,40 C45,40 40,35 40,25 C40,15 45,10 50,10 M40,40 L60,40 L70,70 L75,120 L65,120 L60,160 L60,195 L40,195 L40,160 L35,120 L25,120 L30,70 Z" />
+                        </svg>
+                        {points.map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => onPointToggle(p.id)}
+                                className={`absolute w-7 h-7 -ml-3.5 -mt-3.5 rounded-full border-2 transition-all duration-300 z-10 ${
+                                    selectedPoints.includes(p.id) ? 'bg-rose-500 border-white scale-125 shadow-lg' : 'bg-white border-slate-300'
+                                }`}
+                                style={{ left: p.x, top: p.y }}
+                            />
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Aplicação Principal ---
+        function App() {
+            const [view, setView] = useState('home');
+            const [guideCategory, setGuideCategory] = useState(null);
+            const [pain, setPain] = useState(5);
+            const [fatigue, setFatigue] = useState(5);
+            const [weather, setWeather] = useState('Ameno');
+            const [notes, setNotes] = useState('');
+            const [selectedPoints, setSelectedPoints] = useState([]);
+            const [history, setHistory] = useState([]);
+            const [showSuccess, setShowSuccess] = useState(false);
+
+            useEffect(() => {
+                const saved = localStorage.getItem('fibroflow_data');
+                if (saved) setHistory(JSON.parse(saved));
+                lucide.createIcons();
+            }, []);
+
+            useEffect(() => lucide.createIcons(), [view, guideCategory, history]);
+
+            const saveEntry = () => {
+                const now = new Date();
+                const entry = {
+                    id: now.getTime(),
+                    date: now.toLocaleDateString('pt-BR'),
+                    time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                    pain, fatigue, weather, notes, points: selectedPoints
+                };
+                const newHistory = [entry, ...history];
+                setHistory(newHistory);
+                localStorage.setItem('fibflow_data', JSON.stringify(newHistory));
+                setShowSuccess(true);
+                setTimeout(() => { setShowSuccess(false); setView('home'); resetForm(); }, 1500);
+            };
+
+            const resetForm = () => {
+                setPain(5); setFatigue(5); setNotes(''); setSelectedPoints([]);
+            };
+
+            // Conteúdo do Guia (Mesmo da versão anterior, otimizado)
+            const guideSections = {
+                social: {
+                    title: "Contra Preconceito",
+                    items: [
+                        { q: "É falta de vontade?", r: "A fibro é neurológica. O meu esforço para estar aqui é 10x maior que o seu." },
+                        { q: "Não parece doente?", r: "Deficiências invisíveis não precisam de 'aparência' para causar dor real." }
+                    ]
+                },
+                alternatives: {
+                    title: "Tratamentos",
+                    items: [
+                        { q: "CBD / THC", r: "Uso medicinal para modulação de dor e sono reparador (sob prescrição)." },
+                        { q: "Hidroterapia", r: "Exercício em água morna é padrão ouro para mobilidade sem impacto." }
+                    ]
+                },
+                rights: {
+                    title: "Direitos",
+                    items: [
+                        { q: "Fila Preferencial", r: "Direito garantido em todo o Brasil para Fibromialgia (Lei Federal 2026)." },
+                        { q: "Benefícios Previdenciários", r: "Possibilidade de auxílio-doença ou aposentadoria por invalidez, dependendo da gravidade e incapacidade." }
+                    ]
+                }
+            };
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen pb-32 p-6">
+                    {/* Header */}
+                    {view === 'home' && (
+                        <div className="animate-in fade-in slide-in-from-top duration-500">
+                            <h1 className="text-3xl font-black text-slate-800 pt-8 leading-tight">Olá, como estás<br/>hoje?</h1>
+                            <p className="text-slate-400 font-medium mb-8 italic">FibroFlow v1.0</p>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                <button onClick={() => setView('track')} className="bg-indigo-600 p-6 rounded-[32px] text-white shadow-xl flex flex-col justify-between h-40 text-left">
+                                    <PlusCircle size={32} />
+                                    <span className="font-bold text-lg leading-tight">Novo Registro</span>
+                                </button>
+                                <button onClick={() => setView('guide')} className="bg-emerald-600 p-6 rounded-[32px] text-white shadow-xl flex flex-col justify-between h-40 text-left">
+                                    <ShieldCheck size={32} />
+                                    <span className="font-bold text-lg leading-tight">Guia & Apoio</span>
+                                </button>
+                            </div>
+
+                            <div onClick={() => setView('crisis')} className="bg-rose-50 p-6 rounded-[32px] border border-rose-100 flex items-center justify-between cursor-pointer mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-rose-500 p-3 rounded-2xl text-white"><AlertTriangle size={20}/></div>
+                                    <span className="font-bold text-rose-900">Modo de Crise</span>
+                                </div>
+                                <ChevronRight className="text-rose-300" />
+                            </div>
+
+                            <h3 className="font-bold text-slate-800 mb-4">Últimos Dias</h3>
+                            {history.slice(0, 3).map(e => (
+                                <div key={e.id} className="bg-white p-4 rounded-[24px] mb-3 shadow-sm border border-slate-100 flex justify-between items-center">
+                                    <div className="flex gap-3 items-center">
+                                        <div className="bg-slate-50 p-2 rounded-xl text-center min-w-[45px]">
+                                            <div className="text-[10px] font-black text-slate-400">{e.date.split('/')[0]}/{e.date.split('/')[1]}</div>
+                                            <div className="text-xs font-bold text-slate-600">{e.time}</div>
+                                        </div>
+                                        <div className="font-bold text-slate-700 text-sm">Dor {e.pain} • {e.weather}</div>
+                                    </div>
+                                    <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">{e.points.length} Pontos</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Registro */}
+                    {view === 'track' && (
+                        <div className="animate-in slide-in-from-right">
+                            <header className="flex items-center gap-4 mb-8">
+                                <button onClick={() => setView('home')} className="p-3 bg-white rounded-2xl shadow-sm text-slate-600"><ChevronLeft/></button>
+                                <h2 className="text-2xl font-black text-slate-800">Check-in</h2>
+                            </header>
+
+                            <div className="space-y-6">
+                                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100">
+                                    <label className="font-bold text-slate-800 block mb-4">Clima Atual</label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {['Frio', 'Ameno', 'Quente'].map(w => (
+                                            <button key={w} onClick={() => setWeather(w)} className={`py-4 rounded-2xl font-bold border-2 transition-all ${weather === w ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-50 bg-slate-50 text-slate-400'}`}>{w}</button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100">
+                                    <label className="font-bold text-slate-800 block mb-4">Onde dói?</label>
+                                    <BodyMap selectedPoints={selectedPoints} onPointToggle={id => setSelectedPoints(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])} />
+                                </div>
+
+                                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 space-y-4">
+                                    <div>
+                                        <div className="flex justify-between mb-2"><span className="font-bold text-slate-700">Dor</span><span className="font-bold text-indigo-600">{pain}</span></div>
+                                        <input type="range" min="0" max="10" value={pain} onChange={e => setPain(e.target.value)} className="w-full" />
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between mb-2"><span className="font-bold text-slate-700">Fadiga</span><span className="font-bold text-emerald-600">{fatigue}</span></div>
+                                        <input type="range" min="0" max="10" value={fatigue} onChange={e => setFatigue(e.target.value)} className="w-full" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100">
+                                    <textarea className="w-full bg-slate-50 p-4 rounded-2xl text-sm border-none outline-none focus:ring-2 focus:ring-indigo-100" rows="3" placeholder="Notas sobre a dor..." value={notes} onChange={e => setNotes(e.target.value)} />
+                                </div>
+
+                                <button onClick={saveEntry} className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black text-lg shadow-xl shadow-indigo-100">Salvar Agora</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Guia (Simplificado para o exemplo) */}
+                    {view === 'guide' && (
+                        <div className="animate-in slide-in-from-right">
+                             <header className="flex items-center gap-4 mb-8">
+                                <button onClick={() => setView('home')} className="p-3 bg-white rounded-2xl shadow-sm text-slate-600"><ChevronLeft/></button>
+                                <h2 className="text-2xl font-black text-slate-800">Direitos & Guia</h2>
+                            </header>
+
+                            <div className="bg-gradient-to-br from-indigo-700 to-indigo-900 rounded-[32px] p-8 text-white shadow-xl mb-6">
+                                <div className="flex items-center gap-2 mb-2 bg-white/20 w-fit px-3 py-1 rounded-full text-[10px] font-black uppercase">Lei Federal 2026</div>
+                                <h3 className="text-2xl font-black mb-2">FILA PREFERENCIAL</h3>
+                                <p className="text-indigo-100 text-sm">Direito garantido em todo o Brasil para Fibromialgia.</p>
+                            </div>
+                            
+                            <p className="text-center text-slate-400 text-sm italic py-10">Página de Guia Expandida em breve...</p>
+                        </div>
+                    )}
+
+                    {/* Histórico Completo */}
+                    {view === 'history' && (
+                        <div className="animate-in slide-in-from-right">
+                             <header className="flex items-center gap-4 mb-8">
+                                <button onClick={() => setView('home')} className="p-3 bg-white rounded-2xl shadow-sm text-slate-600"><ChevronLeft/></button>
+                                <h2 className="text-2xl font-black text-slate-800">Seu Diário</h2>
+                            </header>
+                            <div className="space-y-4">
+                                {history.map(e => (
+                                    <div key={e.id} className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100">
+                                        <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-4">
+                                            <span className="font-black text-indigo-600 uppercase text-xs tracking-wider">{e.date} às {e.time}</span>
+                                            <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded-lg text-slate-500 uppercase">{e.weather}</span>
+                                        </div>
+                                        <div className="flex gap-4 mb-4">
+                                            <div className="flex-1 bg-indigo-50 p-3 rounded-2xl text-center"><div className="text-[10px] font-bold text-indigo-400 uppercase">Dor</div><div className="text-lg font-black text-indigo-700">{e.pain}</div></div>
+                                            <div className="flex-1 bg-emerald-50 p-3 rounded-2xl text-center"><div className="text-[10px] font-bold text-emerald-400 uppercase">Fadiga</div><div className="text-lg font-black text-emerald-700">{e.fatigue}</div></div>
+                                        </div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase mb-2">Pontos Afetados</div>
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {e.points.map(p => <span key={p} className="bg-rose-50 text-rose-600 px-3 py-1 rounded-lg text-[10px] font-bold">{p}</span>)}
+                                        </div>
+                                        {e.notes && <p className="text-xs text-slate-500 italic bg-slate-50 p-3 rounded-xl border-l-2 border-indigo-200">"{e.notes}"</p>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Navegação Inferior */}
+                    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-white/80 backdrop-blur-2xl border border-slate-200 rounded-[40px] p-2 flex justify-around items-center shadow-2xl z-40">
+                        <button onClick={() => setView('home')} className={`p-4 rounded-3xl ${view === 'home' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400'}`}><Heart size={24}/></button>
+                        <button onClick={() => setView('track')} className={`p-4 rounded-3xl ${view === 'track' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400'}`}><PlusCircle size={24}/></button>
+                        <button onClick={() => setView('history')} className={`p-4 rounded-3xl ${view === 'history' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400'}`}><History size={24}/></button>
+                        <button onClick={() => setView('guide')} className={`p-4 rounded-3xl ${view === 'guide' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400'}`}><ShieldCheck size={24}/></button>
+                    </nav>
+
+                    {/* Sucesso Pop-up */}
+                    {showSuccess && (
+                        <div className="fixed inset-0 bg-indigo-600 z-[100] flex flex-col items-center justify-center text-white animate-in zoom-in duration-300">
+                            <CheckCircle2 size={100} className="mb-6 animate-bounce" />
+                            <h2 className="text-4xl font-black mb-2 tracking-tighter">Salvo!</h2>
+                            <p className="text-indigo-100 text-lg">Registo guardado no telemóvel.</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
