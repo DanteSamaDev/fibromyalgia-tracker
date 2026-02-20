@@ -1,0 +1,19 @@
+{
+  "name": "FibroFlow Pain Tracker",
+  "short_name": "FibroFlow",
+  "description": "Acompanhe dor e fadiga da fibromialgia de forma simples.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#4f46e5",
+  "background_color": "#f8fafc",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
